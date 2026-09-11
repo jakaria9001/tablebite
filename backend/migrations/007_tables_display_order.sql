@@ -1,0 +1,2 @@
+ALTER TABLE restaurant_tables
+ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0;

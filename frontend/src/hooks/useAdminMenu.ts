@@ -1,0 +1,25 @@
+import { useEffect, useState } from "react";
+import { getAdminMenuData } from "../api/adminMenu";
+import type { AdminMenuData } from "../types/adminMenu";
+
+export function useAdminMenu() {
+  const [data, setData] = useState<AdminMenuData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = () => {
+    setLoading(true);
+    getAdminMenuData()
+      .then(setData)
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "Unable to load menu data");
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  return { data, loading, error, refresh };
+}
