@@ -37,7 +37,7 @@ func WithAdminUser(next http.Handler) http.Handler {
 		user, ok := lookupSession(cookie.Value)
 		if !ok || !user.Active || user.Expires.Before(time.Now()) {
 			ClearSession(cookie.Value)
-			http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
+			http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode})
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

@@ -64,7 +64,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   int(auth.SessionExpiry.Seconds()),
 		Expires:  time.Now().Add(auth.SessionExpiry),
 	})
@@ -77,8 +77,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("tablebite_admin_session"); err == nil {
 		appmw.ClearSession(cookie.Value)
 	}
-	http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
-	http.SetCookie(w, &http.Cookie{Name: "tablebite_csrf", Value: "", Path: "/", MaxAge: -1, HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode})
+	http.SetCookie(w, &http.Cookie{Name: "tablebite_csrf", Value: "", Path: "/", MaxAge: -1, HttpOnly: false, Secure: true, SameSite: http.SameSiteNoneMode})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -88,7 +88,7 @@ func (h *AuthHandler) CSRFToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not create csrf token", http.StatusInternalServerError)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "tablebite_csrf", Value: token, Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 3600})
+	http.SetCookie(w, &http.Cookie{Name: "tablebite_csrf", Value: token, Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteNoneMode, MaxAge: 3600})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"token": token})
 }
