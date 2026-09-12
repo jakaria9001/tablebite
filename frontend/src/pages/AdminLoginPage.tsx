@@ -34,10 +34,30 @@ export default function AdminLoginPage() {
         <p className="mt-3 text-sm text-slate-300">Use your administrator credentials to continue.</p>
 
         <label className="mt-6 block text-sm font-semibold text-slate-200">Email</label>
-        <input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2" placeholder="admin@example.com" />
+        <input
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2"
+          placeholder="admin@example.com"
+          type="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
 
         <label className="mt-4 block text-sm font-semibold text-slate-200">Password</label>
-        <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2" placeholder="••••••••" />
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2"
+          placeholder="••••••••"
+          autoComplete="current-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
 
         {error ? <p className="mt-4 rounded-2xl bg-red-500/15 px-3 py-2 text-sm text-red-200">{error}</p> : null}
 

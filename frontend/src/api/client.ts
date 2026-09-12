@@ -1,3 +1,5 @@
+import { getStoredAdminToken } from "./session";
+
 export type ApiErrorKind = "offline" | "unauthorized" | "not_found" | "validation" | "server" | "unknown";
 
 export class ApiError extends Error {
@@ -9,6 +11,7 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+  const token = getStoredAdminToken();
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${path}`, {
@@ -16,6 +19,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options?.headers,
       },
     });

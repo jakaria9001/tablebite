@@ -21,12 +21,14 @@ function buildQrToken(tableNumber: string, displayName: string) {
   return `tbl-${safeTable}-${safeName}`.replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
 
+const FRONTEND_URL = (import.meta.env.VITE_FRONTEND_URL ?? window.location.origin).replace(/\/$/, "");
+
 function buildTableUrl(token: string, tableNumber: string) {
-  return `http://localhost:5173/table/${tableNumber}/${token}`;
+  return `${FRONTEND_URL}/table/${tableNumber}/${token}`;
 }
 
 function renderQrPreview(url: string) {
-  const normalized = url || "http://localhost:5173";
+  const normalized = url || FRONTEND_URL;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -142,7 +144,7 @@ export default function AdminTablesPage() {
   };
 
   const handleShareQr = async () => {
-    const shareTarget = qrModal.token || "http://localhost:5173";
+    const shareTarget = qrModal.token || FRONTEND_URL;
     const shareTitle = qrModal.title || "Table QR Code";
 
     try {
@@ -316,7 +318,7 @@ export default function AdminTablesPage() {
             </div>
             <div className="mt-6 flex flex-col items-center justify-center rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
               <div className="sr-only">
-                <QRCodeCanvas ref={qrDownloadRef} value={qrModal.token || "http://localhost:5173"} size={1024} level="H" includeMargin bgColor="#ffffff" fgColor="#0f172a" />
+                <QRCodeCanvas ref={qrDownloadRef} value={qrModal.token || FRONTEND_URL} size={1024} level="H" includeMargin bgColor="#ffffff" fgColor="#0f172a" />
               </div>
               {renderQrPreview(qrModal.token)}
               <p className="mt-4 break-all text-center text-sm font-medium text-slate-600">{qrModal.token}</p>

@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jakaria9001/tablebite/internal/session"
@@ -19,15 +20,20 @@ type AdminUser = session.AdminUser
 func WithAdminUser(store session.Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("tablebite_admin_session")
-			if err != nil || cookie.Value == "" {
+			token := bearerToken(r)
+			if token == "" {
+				if cookie, err := r.Cookie("tablebite_admin_session"); err == nil {
+					token = cookie.Value
+				}
+			}
+			if token == "" {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			user, ok, err := store.Lookup(r.Context(), cookie.Value)
+			user, ok, err := store.Lookup(r.Context(), token)
 			if err != nil || !ok || !user.Active || user.Expires.Before(time.Now()) {
-				_ = store.Clear(r.Context(), cookie.Value)
+				_ = store.Clear(r.Context(), token)
 				http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode})
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -37,6 +43,15 @@ func WithAdminUser(store session.Store) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func bearerToken(r *http.Request) string {
+	const prefix = "Bearer "
+	value := r.Header.Get("Authorization")
+	if strings.HasPrefix(value, prefix) {
+		return strings.TrimSpace(strings.TrimPrefix(value, prefix))
+	}
+	return ""
 }
 
 func RequireRole(required string) func(http.Handler) http.Handler {

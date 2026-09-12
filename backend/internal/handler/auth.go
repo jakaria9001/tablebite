@@ -78,10 +78,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "token": token})
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if token := bearerToken(r); token != "" {
+		_ = h.sessions.Clear(r.Context(), token)
+	}
 	if cookie, err := r.Cookie("tablebite_admin_session"); err == nil {
 		_ = h.sessions.Clear(r.Context(), cookie.Value)
 	}
@@ -171,4 +174,13 @@ func (h *AuthHandler) authenticate(ctx context.Context, email, password string) 
 		return model.Admin{}, auth.ErrInvalidCredentials
 	}
 	return admin, nil
+}
+
+func bearerToken(r *http.Request) string {
+	value := r.Header.Get("Authorization")
+	const prefix = "Bearer "
+	if strings.HasPrefix(value, prefix) {
+		return strings.TrimSpace(strings.TrimPrefix(value, prefix))
+	}
+	return ""
 }

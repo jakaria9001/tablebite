@@ -5,12 +5,13 @@ import (
 	"log"
 	"os"
 
+	"github.com/jakaria9001/tablebite/internal/auth"
 	"github.com/jakaria9001/tablebite/internal/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
-	email := os.Getenv("ADMIN_EMAIL")
+	email := auth.NormalizeEmail(os.Getenv("ADMIN_EMAIL"))
 	password := os.Getenv("ADMIN_PASSWORD")
 	if email == "" || password == "" {
 		log.Fatal("set ADMIN_EMAIL and ADMIN_PASSWORD before creating an admin")
