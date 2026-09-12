@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,11 +11,15 @@ import (
 
 	"github.com/jakaria9001/tablebite/internal/auth"
 	appmw "github.com/jakaria9001/tablebite/internal/middleware"
+	"github.com/jakaria9001/tablebite/internal/model"
+	"github.com/jakaria9001/tablebite/internal/repository"
 )
 
-type AuthHandler struct{}
+type AuthHandler struct{ admins *repository.AdminRepository }
 
-func NewAuthHandler() *AuthHandler { return &AuthHandler{} }
+func NewAuthHandler(admins *repository.AdminRepository) *AuthHandler {
+	return &AuthHandler{admins: admins}
+}
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -35,7 +40,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateAdminCredentials(email, password); err != nil {
+	admin, err := h.authenticate(r.Context(), email, password)
+	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
@@ -50,7 +56,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appmw.RegisterSession(token, appmw.AdminUser{ID: 1, Email: email, Role: "super_admin", Active: true, Expires: time.Now().Add(auth.SessionExpiry)})
+	appmw.RegisterSession(token, appmw.AdminUser{ID: admin.ID, Email: admin.Email, Role: admin.Role, Active: true, Expires: time.Now().Add(auth.SessionExpiry)})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "tablebite_admin_session",
@@ -124,7 +130,8 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateAdminCredentials(user.Email, payload.CurrentPassword); err != nil {
+	admin, err := h.authenticate(r.Context(), user.Email, payload.CurrentPassword)
+	if err != nil {
 		http.Error(w, "current password is invalid", http.StatusUnauthorized)
 		return
 	}
@@ -134,30 +141,26 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not change password", http.StatusInternalServerError)
 		return
 	}
-	_ = os.Setenv("ADMIN_PASSWORD_HASH", string(hash))
+	if err := h.admins.UpdatePasswordHash(r.Context(), admin.ID, hash); err != nil {
+		http.Error(w, "could not change password", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func validateAdminCredentials(email, password string) error {
-	expectedEmail := auth.NormalizeEmail(os.Getenv("ADMIN_EMAIL"))
-	if expectedEmail != "" && expectedEmail != email {
-		return auth.ErrInvalidCredentials
-	}
-
-	storedHash := os.Getenv("ADMIN_PASSWORD_HASH")
-	if storedHash != "" {
-		if err := auth.ComparePassword(storedHash, password); err != nil {
-			return auth.ErrInvalidCredentials
+func (h *AuthHandler) authenticate(ctx context.Context, email, password string) (model.Admin, error) {
+	admin, err := h.admins.FindByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, repository.ErrAdminNotFound) {
+			return model.Admin{}, auth.ErrInvalidCredentials
 		}
-		return nil
+		return model.Admin{}, err
 	}
-
-	if rawPassword := os.Getenv("ADMIN_PASSWORD"); rawPassword != "" {
-		if password != rawPassword {
-			return auth.ErrInvalidCredentials
-		}
-		return nil
+	if !admin.IsActive {
+		return model.Admin{}, auth.ErrInvalidCredentials
 	}
-
-	return auth.ErrInvalidCredentials
+	if err := auth.ComparePassword(admin.PasswordHash, password); err != nil {
+		return model.Admin{}, auth.ErrInvalidCredentials
+	}
+	return admin, nil
 }

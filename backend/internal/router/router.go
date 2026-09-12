@@ -11,7 +11,7 @@ import (
 	appmw "github.com/jakaria9001/tablebite/internal/middleware"
 )
 
-func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, corsOrigin string) http.Handler {
+func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, corsOrigin string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -22,8 +22,6 @@ func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, corsO
 	r.Use(appmw.RequestIDHeader)
 
 	r.Get("/api/health", healthHandler)
-
-	authHandler := handler.NewAuthHandler()
 
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Use(appmw.CSRF(os.Getenv("CSRF_SECRET")))

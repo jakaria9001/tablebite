@@ -32,7 +32,9 @@ func main() {
 
 	menuRepo := repository.NewMenuRepository(db)
 	menuHandler := handler.NewMenuHandler(menuRepo)
-	mux := router.New(handler.Health, menuHandler, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
+	adminRepo := repository.NewAdminRepository(db)
+	authHandler := handler.NewAuthHandler(adminRepo)
+	mux := router.New(handler.Health, menuHandler, authHandler, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
 
 	port := getenv("PORT", "8080")
 	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

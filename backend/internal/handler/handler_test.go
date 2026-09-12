@@ -30,7 +30,7 @@ func TestHealthReturnsJSONAndRequestID(t *testing.T) {
 }
 
 func TestLoginRejectsInvalidJSONWithAPIErrorShape(t *testing.T) {
-	handler := NewAuthHandler()
+	handler := NewAuthHandler(nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("{"))
 	res := httptest.NewRecorder()
 
