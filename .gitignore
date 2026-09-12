@@ -27,3 +27,7 @@ coverage.out
 
 # Generated QR assets
 backend/generated/
+
+# backups
+backups/
+*.dump
