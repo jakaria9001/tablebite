@@ -7,11 +7,13 @@ export function PromoBanner() {
   const [dragOffset, setDragOffset] = useState(0);
 
   useEffect(() => {
-    void getPublicBanners().then((data) => {
-      const active = data.banners.filter((item) => item.is_active).sort((a, b) => b.id - a.id);
-      setBanners(active);
-      setActiveIndex(0);
-    });
+    void getPublicBanners()
+      .then((data) => {
+        const active = (data?.banners ?? []).filter((item) => item.is_active).sort((a, b) => b.id - a.id);
+        setBanners(active);
+        setActiveIndex(0);
+      })
+      .catch(() => setBanners([]));
   }, []);
 
   const currentBanner = banners[activeIndex];

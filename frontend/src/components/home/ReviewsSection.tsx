@@ -6,7 +6,9 @@ export function ReviewsSection() {
   const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
-    void getPublicReviews(8).then((data) => setReviews(data.reviews));
+    void getPublicReviews(8)
+      .then((data) => setReviews(data?.reviews ?? []))
+      .catch(() => setReviews([]));
   }, []);
 
   const marqueeReviews = reviews.length > 0 ? [...reviews, ...reviews] : [];

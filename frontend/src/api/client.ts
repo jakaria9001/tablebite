@@ -46,7 +46,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   try {
     return JSON.parse(body) as T;
   } catch {
-    return undefined as T;
+    // A non-JSON 200 body usually means the request never reached the API (e.g. a routing misconfiguration).
+    throw new ApiError("server", "Received an unexpected response from the server.");
   }
 }
 
