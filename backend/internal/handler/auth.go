@@ -13,12 +13,16 @@ import (
 	appmw "github.com/jakaria9001/tablebite/internal/middleware"
 	"github.com/jakaria9001/tablebite/internal/model"
 	"github.com/jakaria9001/tablebite/internal/repository"
+	"github.com/jakaria9001/tablebite/internal/session"
 )
 
-type AuthHandler struct{ admins *repository.AdminRepository }
+type AuthHandler struct {
+	admins   *repository.AdminRepository
+	sessions session.Store
+}
 
-func NewAuthHandler(admins *repository.AdminRepository) *AuthHandler {
-	return &AuthHandler{admins: admins}
+func NewAuthHandler(admins *repository.AdminRepository, sessions session.Store) *AuthHandler {
+	return &AuthHandler{admins: admins, sessions: sessions}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +60,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appmw.RegisterSession(token, appmw.AdminUser{ID: admin.ID, Email: admin.Email, Role: admin.Role, Active: true, Expires: time.Now().Add(auth.SessionExpiry)})
+	sessionUser := session.AdminUser{ID: admin.ID, Email: admin.Email, Role: admin.Role, Active: true, Expires: time.Now().Add(auth.SessionExpiry)}
+	if err := h.sessions.Register(r.Context(), token, sessionUser); err != nil {
+		http.Error(w, "could not create session", http.StatusInternalServerError)
+		return
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "tablebite_admin_session",
@@ -75,7 +83,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("tablebite_admin_session"); err == nil {
-		appmw.ClearSession(cookie.Value)
+		_ = h.sessions.Clear(r.Context(), cookie.Value)
 	}
 	http.SetCookie(w, &http.Cookie{Name: "tablebite_admin_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteNoneMode})
 	http.SetCookie(w, &http.Cookie{Name: "tablebite_csrf", Value: "", Path: "/", MaxAge: -1, HttpOnly: false, Secure: true, SameSite: http.SameSiteNoneMode})

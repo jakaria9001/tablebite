@@ -6,14 +6,24 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/jakaria9001/tablebite/internal/session"
 )
+
+type fakeSessionStore struct{}
+
+func (fakeSessionStore) Register(context.Context, string, session.AdminUser) error { return nil }
+func (fakeSessionStore) Lookup(context.Context, string) (session.AdminUser, bool, error) {
+	return session.AdminUser{}, false, nil
+}
+func (fakeSessionStore) Clear(context.Context, string) error { return nil }
 
 func TestWithAdminUserRejectsMissingSession(t *testing.T) {
 	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("next should not be called") })
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 
-	WithAdminUser(next).ServeHTTP(res, req)
+	WithAdminUser(fakeSessionStore{})(next).ServeHTTP(res, req)
 
 	if res.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", res.Code, http.StatusUnauthorized)

@@ -9,9 +9,10 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/jakaria9001/tablebite/internal/handler"
 	appmw "github.com/jakaria9001/tablebite/internal/middleware"
+	"github.com/jakaria9001/tablebite/internal/session"
 )
 
-func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, corsOrigin string) http.Handler {
+func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, sessionStore session.Store, corsOrigin string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -38,7 +39,7 @@ func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authH
 		api.Get("/auth/csrf", authHandler.CSRFToken)
 
 		api.Group(func(admin chi.Router) {
-			admin.Use(appmw.WithAdminUser)
+			admin.Use(appmw.WithAdminUser(sessionStore))
 			admin.Use(appmw.RequireRole("admin"))
 			admin.Get("/auth/me", authHandler.Me)
 			admin.Post("/auth/change-password", authHandler.ChangePassword)

@@ -15,6 +15,7 @@ import (
 	"github.com/jakaria9001/tablebite/internal/handler"
 	"github.com/jakaria9001/tablebite/internal/repository"
 	"github.com/jakaria9001/tablebite/internal/router"
+	"github.com/jakaria9001/tablebite/internal/session"
 )
 
 func main() {
@@ -33,8 +34,9 @@ func main() {
 	menuRepo := repository.NewMenuRepository(db)
 	menuHandler := handler.NewMenuHandler(menuRepo)
 	adminRepo := repository.NewAdminRepository(db)
-	authHandler := handler.NewAuthHandler(adminRepo)
-	mux := router.New(handler.Health, menuHandler, authHandler, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
+	sessionStore := session.NewPostgresStore(db)
+	authHandler := handler.NewAuthHandler(adminRepo, sessionStore)
+	mux := router.New(handler.Health, menuHandler, authHandler, sessionStore, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
 
 	port := getenv("PORT", "8080")
 	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
