@@ -748,7 +748,7 @@ func (r *MenuRepository) DeleteGalleryImage(ctx context.Context, imageID int64) 
 	if err != nil {
 		return err
 	}
-	_, err = r.db.Exec(ctx, `UPDATE gallery_images SET is_active = FALSE WHERE id = $1 AND restaurant_id = $2`, imageID, restaurantID)
+	_, err = r.db.Exec(ctx, `UPDATE gallery_images SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND restaurant_id = $2`, imageID, restaurantID)
 	return err
 }
 
@@ -758,7 +758,7 @@ func (r *MenuRepository) UpdateGalleryOrder(ctx context.Context, imageIDs []int6
 		return err
 	}
 	for index, imageID := range imageIDs {
-		if _, err := r.db.Exec(ctx, `UPDATE gallery_images SET display_order = $1 WHERE id = $2 AND restaurant_id = $3`, index+1, imageID, restaurantID); err != nil {
+		if _, err := r.db.Exec(ctx, `UPDATE gallery_images SET display_order = $1, updated_at = NOW() WHERE id = $2 AND restaurant_id = $3`, index+1, imageID, restaurantID); err != nil {
 			return fmt.Errorf("update gallery order: %w", err)
 		}
 	}
