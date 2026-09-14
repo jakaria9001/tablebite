@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAdminMe, logoutAdmin } from "../../api/auth";
 import { useCart } from "../../context/CartContext";
@@ -10,6 +10,7 @@ export function Header() {
   const { settings } = useRestaurantSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminVerified, setAdminVerified] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const restaurantName = settings.restaurant_name?.trim() || "Restaurant";
@@ -33,6 +34,21 @@ export function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) {
+      return;
+    }
+
+    const handleOutsidePointer = (event: PointerEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+  }, [mobileMenuOpen]);
+
   async function handleLogout() {
     await logoutAdmin().catch(() => undefined);
     setAdminVerified(false);
@@ -42,6 +58,7 @@ export function Header() {
 
   const showLogout = adminVerified && location.pathname === "/admin";
   const navItems = [
+    { label: "HOME", to: "/" },
     { label: "MENU", to: "/menu" },
     { label: "ABOUT", href: "/#about" },
     { label: "GALLERY", href: "/#gallery" },
@@ -50,11 +67,11 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-black/5 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--cream)]/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
         <Link to="/" className="flex items-center gap-3">
           <FallbackImage src={logo || "/indian_restaurant_logo.jpg"} alt={`${restaurantName} logo`} className="h-12 w-auto rounded-full object-contain" />
-          <p className="text-xl font-black tracking-tight text-black-400">{restaurantName}</p>
+          <p className="font-serif text-lg font-black tracking-tight text-[var(--maroon-900)] sm:text-xl">{restaurantName}</p>
         </Link>
 
         <div className="ml-auto flex items-center gap-3">
@@ -76,7 +93,7 @@ export function Header() {
             )}
           </nav>
 
-          <div className="relative md:hidden">
+          <div ref={mobileMenuRef} className="relative md:hidden">
             <button
               type="button"
               aria-label="Open menu"
@@ -122,7 +139,7 @@ export function Header() {
             ) : null}
           </div>
 
-          <Link to="/cart" className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:border-orange-300 hover:text-orange-600">
+          <Link to="/cart" aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ""}`} className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white shadow-sm transition hover:border-[var(--gold-500)] hover:text-[var(--maroon-700)]">
             <img src="/shopping-cart.png" alt="Cart" className="h-5 w-5 object-contain" />
             {itemCount > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black text-white">

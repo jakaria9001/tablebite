@@ -49,7 +49,12 @@ export default function HomePage() {
       <main className="pb-16">
         <Hero />
 
-        {loading ? <p className="mx-auto max-w-7xl px-5 py-10 lg:px-8">Loading categories…</p> : error ? <p className="mx-auto max-w-7xl px-5 py-10 text-red-600 lg:px-8">{error}</p> : (
+        {loading ? <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8" aria-label="Loading menu highlights">
+          <div className="mb-7 h-8 w-64 animate-pulse rounded-full bg-[var(--cream-deep)]" />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-3xl bg-[var(--cream-deep)]" />)}
+          </div>
+        </section> : error ? <p className="mx-auto max-w-7xl px-5 py-10 text-red-600 lg:px-8">{error}</p> : (
           <FeaturedSection categories={categories} items={featuredItems} />
         )}
 
@@ -57,7 +62,7 @@ export default function HomePage() {
 
         {!loading && !error ? <Top10Section items={topDishes} starters={starterItems} /> : null}
 
-        <section id="about" className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+        <section id="about" className="scroll-mt-24 mx-auto max-w-7xl px-5 py-8 lg:px-8">
           <div className="rounded-[2rem] border border-black/5 bg-white p-8 shadow-sm md:p-10">
             <SectionHeading eyebrow="About us" title="A warm, memorable dining experience from first bite to last." description="We’re dedicated to serving comfort food with a modern touch, blending traditional flavours with a seamless digital experience for guests and staff alike." />
           </div>
@@ -66,7 +71,7 @@ export default function HomePage() {
         <GalleryPreview />
         <ReviewsSection />
 
-        <section id="contact" className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+        <section id="contact" className="scroll-mt-24 mx-auto max-w-7xl px-5 py-8 lg:px-8">
           <div className="grid gap-6 rounded-[2rem] border border-black/5 bg-white p-8 shadow-sm md:grid-cols-[1fr_.9fr] md:p-10">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-orange-600">Visit us</p>

@@ -916,9 +916,11 @@ func (r *MenuRepository) GetPublicBanners(ctx context.Context) ([]model.Banner, 
 		return nil, err
 	}
 
-	rows, err := r.db.Query(ctx, `SELECT id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at, 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at, 'YYYY-MM-DD"T"HH24:MI'), is_active
+	rows, err := r.db.Query(ctx, `SELECT id, title, subtitle, COALESCE(image_url, ''), 'Explore Menu', '/menu', display_order, to_char(starts_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), is_active
 	FROM banners
 	WHERE restaurant_id = $1 AND is_active = TRUE
+	  AND (starts_at IS NULL OR starts_at <= NOW())
+	  AND (ends_at IS NULL OR ends_at > NOW())
 	ORDER BY display_order, id`, restaurantID)
 	if err != nil {
 		return nil, fmt.Errorf("load banners: %w", err)
@@ -952,7 +954,7 @@ func (r *MenuRepository) GetAdminBanners(ctx context.Context) ([]model.Banner, e
 		return nil, err
 	}
 
-	rows, err := r.db.Query(ctx, `SELECT id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at, 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at, 'YYYY-MM-DD"T"HH24:MI'), is_active
+	rows, err := r.db.Query(ctx, `SELECT id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), is_active
 	FROM banners
 	WHERE restaurant_id = $1
 	ORDER BY display_order, id`, restaurantID)
@@ -984,6 +986,11 @@ func (r *MenuRepository) GetAdminBanners(ctx context.Context) ([]model.Banner, e
 
 func (r *MenuRepository) CreateBanner(ctx context.Context, payload model.BannerPayload) (model.Banner, error) {
 	var out model.Banner
+	if err := validateBannerPayload(payload, false); err != nil {
+		return out, err
+	}
+	payload.CTALabel = "Explore Menu"
+	payload.CTAURL = "/menu"
 	restaurantID, err := r.getActiveRestaurantID(ctx)
 	if err != nil {
 		return out, err
@@ -996,7 +1003,7 @@ func (r *MenuRepository) CreateBanner(ctx context.Context, payload model.BannerP
 
 	if err := r.db.QueryRow(ctx, `INSERT INTO banners (restaurant_id, title, subtitle, image_url, cta_label, cta_url, display_order, starts_at, ends_at, is_active)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9::timestamptz, $10)
-	RETURNING id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at, 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at, 'YYYY-MM-DD"T"HH24:MI'), is_active`, restaurantID, payload.Title, payload.Subtitle, payload.ImageURL, payload.CTALabel, payload.CTAURL, nextOrder, parseOptionalTimestamp(payload.StartsAt), parseOptionalTimestamp(payload.EndsAt), payload.IsActive).Scan(&out.ID, &out.Title, &out.Subtitle, &out.ImageURL, &out.CTALabel, &out.CTAURL, &out.DisplayOrder, &out.StartsAt, &out.EndsAt, &out.IsActive); err != nil {
+	RETURNING id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), is_active`, restaurantID, payload.Title, payload.Subtitle, payload.ImageURL, payload.CTALabel, payload.CTAURL, nextOrder, parseOptionalTimestamp(payload.StartsAt), parseOptionalTimestamp(payload.EndsAt), payload.IsActive).Scan(&out.ID, &out.Title, &out.Subtitle, &out.ImageURL, &out.CTALabel, &out.CTAURL, &out.DisplayOrder, &out.StartsAt, &out.EndsAt, &out.IsActive); err != nil {
 		return out, fmt.Errorf("create banner: %w", err)
 	}
 	return out, nil
@@ -1009,9 +1016,19 @@ func (r *MenuRepository) UpdateBanner(ctx context.Context, payload model.BannerP
 		return out, err
 	}
 
+	var existingStart string
+	if err := r.db.QueryRow(ctx, `SELECT COALESCE(to_char(starts_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), '') FROM banners WHERE id = $1 AND restaurant_id = $2`, payload.ID, restaurantID).Scan(&existingStart); err != nil {
+		return out, fmt.Errorf("load banner schedule: %w", err)
+	}
+	if err := validateBannerPayload(payload, payload.StartsAt == existingStart); err != nil {
+		return out, err
+	}
+	payload.CTALabel = "Explore Menu"
+	payload.CTAURL = "/menu"
+
 	if err := r.db.QueryRow(ctx, `UPDATE banners SET title = $3, subtitle = $4, image_url = $5, cta_label = $6, cta_url = $7, starts_at = $8::timestamptz, ends_at = $9::timestamptz, is_active = $10, updated_at = NOW()
 	WHERE id = $1 AND restaurant_id = $2
-	RETURNING id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at, 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at, 'YYYY-MM-DD"T"HH24:MI'), is_active`, payload.ID, restaurantID, payload.Title, payload.Subtitle, payload.ImageURL, payload.CTALabel, payload.CTAURL, parseOptionalTimestamp(payload.StartsAt), parseOptionalTimestamp(payload.EndsAt), payload.IsActive).Scan(&out.ID, &out.Title, &out.Subtitle, &out.ImageURL, &out.CTALabel, &out.CTAURL, &out.DisplayOrder, &out.StartsAt, &out.EndsAt, &out.IsActive); err != nil {
+	RETURNING id, title, subtitle, COALESCE(image_url, ''), COALESCE(cta_label, ''), COALESCE(cta_url, ''), display_order, to_char(starts_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), to_char(ends_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI'), is_active`, payload.ID, restaurantID, payload.Title, payload.Subtitle, payload.ImageURL, payload.CTALabel, payload.CTAURL, parseOptionalTimestamp(payload.StartsAt), parseOptionalTimestamp(payload.EndsAt), payload.IsActive).Scan(&out.ID, &out.Title, &out.Subtitle, &out.ImageURL, &out.CTALabel, &out.CTAURL, &out.DisplayOrder, &out.StartsAt, &out.EndsAt, &out.IsActive); err != nil {
 		return out, fmt.Errorf("update banner: %w", err)
 	}
 	return out, nil
@@ -1039,11 +1056,58 @@ func (r *MenuRepository) UpdateBannerOrder(ctx context.Context, bannerIDs []int6
 	return nil
 }
 
-func parseOptionalTimestamp(value string) string {
+func parseOptionalTimestamp(value string) *string {
 	if value == "" {
-		return "NULL"
+		return nil
 	}
-	return value
+	parsed, err := parseBannerTimestamp(value)
+	if err != nil {
+		return nil
+	}
+	formatted := parsed.UTC().Format(time.RFC3339)
+	return &formatted
+}
+
+func parseBannerTimestamp(value string) (time.Time, error) {
+	const layout = "2006-01-02T15:04"
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed, nil
+	}
+	return time.ParseInLocation(layout, value, bannerLocation())
+}
+
+func bannerLocation() *time.Location {
+	return time.FixedZone("IST", 5*60*60+30*60)
+}
+
+func validateBannerPayload(payload model.BannerPayload, allowExistingPastStart bool) error {
+	if payload.StartsAt == "" && payload.EndsAt == "" {
+		return nil
+	}
+
+	var startsAt, endsAt time.Time
+	var err error
+	if payload.StartsAt != "" {
+		startsAt, err = parseBannerTimestamp(payload.StartsAt)
+		if err != nil {
+			return fmt.Errorf("invalid banner start date")
+		}
+		now := time.Now().In(bannerLocation())
+		startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		if startsAt.Before(startOfToday) && !allowExistingPastStart {
+			return fmt.Errorf("banner start date cannot be before today")
+		}
+	}
+	if payload.EndsAt != "" {
+		endsAt, err = parseBannerTimestamp(payload.EndsAt)
+		if err != nil {
+			return fmt.Errorf("invalid banner end date")
+		}
+	}
+	if payload.StartsAt != "" && payload.EndsAt != "" && !endsAt.After(startsAt) {
+		return fmt.Errorf("banner end date must be after the start date")
+	}
+	return nil
 }
 
 func (r *MenuRepository) GetCategories(ctx context.Context) ([]model.Category, error) {

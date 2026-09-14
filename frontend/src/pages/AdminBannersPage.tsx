@@ -16,6 +16,19 @@ const emptyForm = (): BannerPayload => ({
   is_active: true,
 });
 
+const FIXED_CTA_LABEL = "Explore Menu";
+const FIXED_CTA_URL = "/menu";
+
+function localDateTimeValue(date: Date) {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+}
+
+function startOfTodayValue() {
+  const today = new Date();
+  return localDateTimeValue(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+}
+
 export default function AdminBannersPage() {
   const navigate = useNavigate();
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -25,6 +38,9 @@ export default function AdminBannersPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [form, setForm] = useState<BannerPayload>(emptyForm());
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [originalStartAt, setOriginalStartAt] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const minimumStart = startOfTodayValue();
 
   const orderedBanners = useMemo(() => [...banners].sort((a, b) => a.display_order - b.display_order || a.id - b.id), [banners]);
 
@@ -47,6 +63,8 @@ export default function AdminBannersPage() {
   const resetForm = () => {
     setForm(emptyForm());
     setEditingId(null);
+    setOriginalStartAt("");
+    setFormOpen(false);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -55,15 +73,24 @@ export default function AdminBannersPage() {
       setFeedback("Please provide a title and subtitle.");
       return;
     }
+    if (form.starts_at && form.starts_at < minimumStart && (!editingId || form.starts_at !== originalStartAt)) {
+      setFeedback("Banner start date cannot be before today.");
+      return;
+    }
+    if (form.starts_at && form.ends_at && form.ends_at <= form.starts_at) {
+      setFeedback("Banner end date must be after the start date.");
+      return;
+    }
 
     setSaving(true);
     setFeedback(null);
     try {
+      const payload = { ...form, cta_label: FIXED_CTA_LABEL, cta_url: FIXED_CTA_URL };
       if (editingId) {
-        await updateBanner(editingId, { ...form, id: editingId });
+        await updateBanner(editingId, { ...payload, id: editingId });
         setFeedback("Banner updated.");
       } else {
-        await createBanner(form);
+        await createBanner(payload);
         setFeedback("Banner created.");
       }
       resetForm();
@@ -82,12 +109,14 @@ export default function AdminBannersPage() {
       title: banner.title,
       subtitle: banner.subtitle,
       image_url: banner.image_url ?? "",
-      cta_label: banner.cta_label ?? "",
-      cta_url: banner.cta_url ?? "",
+      cta_label: FIXED_CTA_LABEL,
+      cta_url: FIXED_CTA_URL,
       starts_at: banner.starts_at ?? "",
       ends_at: banner.ends_at ?? "",
       is_active: banner.is_active,
     });
+    setOriginalStartAt(banner.starts_at ?? "");
+    setFormOpen(true);
   };
 
   const handleDelete = async (banner: Banner) => {
@@ -132,11 +161,13 @@ export default function AdminBannersPage() {
             <button type="button" onClick={() => navigate("/admin")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-orange-300 hover:text-orange-600">Back to Dashboard</button>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[0.95fr_0.75fr]">
+          <div>
             <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">Banners</h2>
-                <p className="text-sm text-slate-600">Drag to reorder. Active banners are shown on the homepage.</p>
+                <div className="flex items-center gap-3">
+                  <div><h2 className="text-xl font-black">Banners</h2><p className="mt-1 text-sm text-slate-600">Drag to reorder. Active banners are shown on the homepage.</p></div>
+                  <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen(true); }} className="min-h-11 rounded-full bg-[var(--maroon-800)] px-5 py-2 text-sm font-bold text-white">Add banner</button>
+                </div>
               </div>
               {feedback ? <p className="mt-4 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-700">{feedback}</p> : null}
               {loading ? (
@@ -162,10 +193,11 @@ export default function AdminBannersPage() {
               )}
             </section>
 
-            <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
+            {formOpen ? <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--maroon-950)]/70 px-4 py-6 backdrop-blur-sm sm:py-10" role="dialog" aria-modal="true" aria-labelledby="banner-form-title">
+            <section className="mx-auto max-w-xl rounded-[2rem] border border-[var(--line)] bg-[var(--cream)] p-6 shadow-[var(--shadow-lifted)] sm:p-8">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">{editingId ? "Edit Banner" : "Add Banner"}</h2>
-                {editingId ? <button type="button" onClick={resetForm} className="text-sm font-semibold text-slate-600">Cancel</button> : null}
+                <h2 id="banner-form-title" className="text-xl font-black text-[var(--maroon-900)]">{editingId ? "Edit Banner" : "Add Banner"}</h2>
+                <button type="button" onClick={resetForm} aria-label="Close banner form" className="grid h-11 w-11 place-items-center rounded-full border border-[var(--line)] bg-white text-xl">×</button>
               </div>
               <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
                 <div>
@@ -182,33 +214,32 @@ export default function AdminBannersPage() {
                   label="Image URL"
                   placeholder="https://..."
                 />
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">CTA text</label>
-                  <input value={form.cta_label} onChange={(event) => setForm((current) => ({ ...current, cta_label: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">CTA URL</label>
-                  <input value={form.cta_url} onChange={(event) => setForm((current) => ({ ...current, cta_url: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
+                <div className="rounded-2xl border border-[var(--gold-200)] bg-[var(--cream-deep)] px-4 py-3 text-sm text-[var(--maroon-900)]">
+                  The banner button is fixed to <strong>Explore Menu</strong> and opens <strong>menu directly</strong>.
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-semibold text-slate-700">Start date</label>
-                    <input type="datetime-local" value={form.starts_at} onChange={(event) => setForm((current) => ({ ...current, starts_at: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
+                    <input type="datetime-local" min={minimumStart} value={form.starts_at} onChange={(event) => setForm((current) => ({ ...current, starts_at: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
                   </div>
                   <div>
                     <label className="text-sm font-semibold text-slate-700">End date</label>
-                    <input type="datetime-local" value={form.ends_at} onChange={(event) => setForm((current) => ({ ...current, ends_at: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
+                    <input type="datetime-local" min={form.starts_at || minimumStart} value={form.ends_at} onChange={(event) => setForm((current) => ({ ...current, ends_at: event.target.value }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700">
                   <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />
                   Active
                 </label>
-                <button type="submit" disabled={saving} className="w-full rounded-full bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={resetForm} className="min-h-12 rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold">Cancel</button>
+                <button type="submit" disabled={saving} className="min-h-12 rounded-full bg-[var(--maroon-800)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--maroon-700)] disabled:opacity-60">
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Save"}
                 </button>
+                </div>
               </form>
             </section>
+            </div> : null}
           </div>
         </div>
       </main>

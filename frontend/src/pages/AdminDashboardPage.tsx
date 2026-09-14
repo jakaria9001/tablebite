@@ -43,11 +43,11 @@ export default function AdminDashboardPage() {
 
               <div className="mt-8 grid gap-6 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">Available</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">Available Items</p>
                   <p className="mt-3 text-4xl font-black">{data.availableItems}</p>
                 </div>
                 <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-rose-600">Sold Out</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-rose-600">Sold Out Items</p>
                   <p className="mt-3 text-4xl font-black">{data.soldOutItems}</p>
                 </div>
                 <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">

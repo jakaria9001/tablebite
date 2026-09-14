@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Route, Routes, useParams } from "react-router-dom";
+import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { StickyMobileCartBar } from "./components/cart/StickyMobileCartBar";
 import { CartProvider, useCart } from "./context/CartContext";
 import { getAdminTables } from "./api/tables";
@@ -63,9 +63,20 @@ function TableRouteMenuPage() {
   return <MenuPage />;
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <CartProvider>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/menu" element={<MenuPage />} />

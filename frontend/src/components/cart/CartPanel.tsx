@@ -18,7 +18,7 @@ export function CartPanel() {
 
     const timer = window.setTimeout(() => {
       setShowNotice(false);
-    }, 5000);
+    }, 10000);
 
     return () => window.clearTimeout(timer);
   }, [showNotice]);
@@ -27,8 +27,9 @@ export function CartPanel() {
     <section id="cart" className="mb-8 rounded-[28px] border border-black/5 bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-600">Your cart</p>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--maroon-700)]">Your cart</p>
           <h2 className="text-2xl font-black">{itemCount > 0 ? `${itemCount} item${itemCount > 1 ? "s" : ""} ready` : "Your cart is empty"}</h2>
+          {activeTable ? <p className="mt-1 text-sm font-semibold text-[var(--muted)]">Ordering for {activeTable.tableName || `Table ${activeTable.tableNumber}`}</p> : <p className="mt-1 text-sm text-[var(--muted)]">Choose a table after scanning its QR code to place an order.</p>}
         </div>
         {items.length > 0 ? (
           <button type="button" onClick={clearCart} className="text-sm font-semibold text-slate-500 transition hover:text-orange-600">
@@ -60,9 +61,9 @@ export function CartPanel() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center rounded-full border border-slate-200 bg-white p-1">
-                      <button type="button" onClick={() => updateQuantity(item.menuItemId, item.variant, item.quantity - 1)} className="h-8 w-8 rounded-full text-lg font-bold transition hover:bg-slate-100">−</button>
+                          <button type="button" aria-label={`Decrease ${item.name}`} onClick={() => updateQuantity(item.menuItemId, item.variant, item.quantity - 1)} className="h-10 w-10 rounded-full text-lg font-bold transition hover:bg-slate-100">−</button>
                       <span className="min-w-8 text-center text-sm font-bold">{item.quantity}</span>
-                      <button type="button" onClick={() => updateQuantity(item.menuItemId, item.variant, item.quantity + 1)} className="h-8 w-8 rounded-full text-lg font-bold transition hover:bg-slate-100">+</button>
+                            <button type="button" aria-label={`Increase ${item.name}`} onClick={() => updateQuantity(item.menuItemId, item.variant, item.quantity + 1)} className="h-10 w-10 rounded-full text-lg font-bold transition hover:bg-slate-100">+</button>
                     </div>
                     <button type="button" onClick={() => removeItem(item.menuItemId, item.variant)} className="text-sm font-semibold text-rose-600 transition hover:text-rose-700">
                       Remove
@@ -148,7 +149,7 @@ export function CartPanel() {
               <p>Online ordering support is coming soon.</p>
               <p>Please call a waiter and show them</p>
               <p>your cart. Thanks!</p>
-              <p className="mt-3 font-semibold text-slate-800">
+                <p className="mt-3 font-semibold text-slate-800">
                 Your cart: {itemCount} item{itemCount > 1 ? "s" : ""} · ₹{subtotal}
               </p>
             </div>

@@ -5,6 +5,7 @@ import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { ImageUploadField } from "../components/common/ImageUploadField";
 import { useAdminMenu } from "../hooks/useAdminMenu";
+import { markAdminDataUpdated } from "../hooks/useAdminDashboardSummary";
 import type { AdminMenuItem, AdminMenuItemPayload } from "../types/adminMenu";
 
 const emptyForm = (): AdminMenuItemPayload => ({
@@ -30,6 +31,7 @@ export default function AdminMenuPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [form, setForm] = useState<AdminMenuItemPayload>(emptyForm());
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export default function AdminMenuPage() {
   const resetForm = () => {
     setForm(emptyForm());
     setEditingId(null);
+    setFormOpen(false);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -78,6 +81,7 @@ export default function AdminMenuPage() {
       }
       resetForm();
       await refresh();
+      markAdminDataUpdated();
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to save menu item");
     } finally {
@@ -103,6 +107,7 @@ export default function AdminMenuPage() {
       sort_order: item.sort_order,
       image_url: item.image_url ?? "",
     });
+    setFormOpen(true);
   };
 
   const toggleStatus = async (item: AdminMenuItem, key: "is_available" | "is_featured" | "is_bestseller" | "is_top10") => {
@@ -125,6 +130,7 @@ export default function AdminMenuPage() {
         image_url: item.image_url ?? "",
       });
       await refresh();
+      markAdminDataUpdated();
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to update item");
     } finally {
@@ -138,6 +144,7 @@ export default function AdminMenuPage() {
     try {
       await deleteAdminMenuItem(item.id);
       await refresh();
+      markAdminDataUpdated();
       setFeedback("Menu item deleted.");
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to delete item");
@@ -169,8 +176,7 @@ export default function AdminMenuPage() {
             </button>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
+          <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex-1">
                   <label className="text-sm font-semibold text-slate-700">Search</label>
@@ -181,7 +187,8 @@ export default function AdminMenuPage() {
                     className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none ring-0"
                   />
                 </div>
-                <div className="min-w-[220px]">
+                <div className="flex min-w-[220px] flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="flex-1">
                   <label className="text-sm font-semibold text-slate-700">Filter by category</label>
                   <select
                     value={selectedCategory}
@@ -195,6 +202,10 @@ export default function AdminMenuPage() {
                       </option>
                     ))}
                   </select>
+                  </div>
+                  <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen(true); }} className="min-h-11 rounded-full bg-[var(--maroon-800)] px-5 py-3 text-sm font-bold text-white transition hover:bg-[var(--maroon-700)] active:scale-[0.98]">
+                    Add Item
+                  </button>
                 </div>
               </div>
 
@@ -262,14 +273,17 @@ export default function AdminMenuPage() {
                   </div>
                 </>
               )}
-            </section>
+          </section>
 
-            <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">{editingId ? "Edit Item" : "Add Item"}</h2>
-                {editingId ? <button type="button" onClick={resetForm} className="text-sm font-semibold text-slate-600">Cancel</button> : null}
+          {formOpen ? <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--maroon-950)]/70 px-4 py-6 backdrop-blur-sm sm:py-10" role="dialog" aria-modal="true" aria-labelledby="menu-form-title">
+            <section className="mx-auto max-w-2xl rounded-[2rem] border border-[var(--line)] bg-[var(--cream)] p-6 shadow-[var(--shadow-lifted)] sm:p-8">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-600)]">Menu management</p>
+                  <h2 id="menu-form-title" className="mt-1 text-2xl font-black text-[var(--maroon-900)]">{editingId ? "Edit item" : "Add item"}</h2>
+                </div>
+                <button type="button" onClick={resetForm} aria-label="Close item form" className="grid h-11 w-11 place-items-center rounded-full border border-[var(--line)] bg-white text-xl text-[var(--maroon-900)] transition hover:border-[var(--gold-500)]" >×</button>
               </div>
-
               <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Name</label>
@@ -342,12 +356,15 @@ export default function AdminMenuPage() {
                   <input type="number" value={form.sort_order} onChange={(event) => setForm((current) => ({ ...current, sort_order: Number(event.target.value) }))} className="mt-2 w-full rounded-full border border-slate-200 px-4 py-3 text-sm outline-none" />
                 </div>
 
-                <button type="submit" disabled={saving} className="w-full rounded-full bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60">
-                  {saving ? "Saving..." : editingId ? "Save Changes" : "Save"}
-                </button>
+                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                  <button type="button" onClick={resetForm} className="min-h-12 rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-[var(--ink)]">Cancel</button>
+                  <button type="submit" disabled={saving} className="min-h-12 rounded-full bg-[var(--maroon-800)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--maroon-700)] disabled:cursor-wait disabled:opacity-60">
+                    {saving ? "Saving..." : editingId ? "Save changes" : "Add item"}
+                  </button>
+                </div>
               </form>
             </section>
-          </div>
+          </div> : null}
         </div>
       </main>
       <Footer />
