@@ -19,7 +19,7 @@ export function GalleryPreview() {
   }, []);
 
   return (
-    <section id="gallery" className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+    <section id="gallery" className="scroll-mt-24 mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <div className="mb-6">
         <SectionHeading eyebrow="Gallery" title="A snapshot of the atmosphere and the ambience" />
       </div>

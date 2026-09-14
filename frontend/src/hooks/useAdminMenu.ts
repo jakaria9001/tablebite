@@ -17,9 +17,16 @@ export function useAdminMenu() {
       .finally(() => setLoading(false));
   };
 
+  const updateItem = (updatedItem: AdminMenuData["items"][number]) => {
+    setData((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === updatedItem.id ? updatedItem : item),
+    } : current);
+  };
+
   useEffect(() => {
     refresh();
   }, []);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, updateItem };
 }

@@ -5,6 +5,7 @@ import { createAdminTable, deleteAdminTable, reorderAdminTables, updateAdminTabl
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { useAdminTables } from "../hooks/useAdminTables";
+import { markAdminDataUpdated } from "../hooks/useAdminDashboardSummary";
 import type { AdminTable, AdminTablePayload } from "../api/tables";
 
 const emptyForm = (): AdminTablePayload => ({
@@ -42,6 +43,7 @@ export default function AdminTablesPage() {
   const { tables, loading, error, refresh } = useAdminTables();
   const [form, setForm] = useState<AdminTablePayload>(emptyForm());
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export default function AdminTablesPage() {
   const resetForm = () => {
     setForm(emptyForm());
     setEditingId(null);
+    setFormOpen(false);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -80,6 +83,7 @@ export default function AdminTablesPage() {
       }
       resetForm();
       await refresh();
+      markAdminDataUpdated();
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to save table");
     } finally {
@@ -97,6 +101,7 @@ export default function AdminTablesPage() {
       is_active: table.is_active,
       display_order: table.display_order,
     });
+    setFormOpen(true);
   };
 
   const toggleActive = async (table: AdminTable) => {
@@ -110,6 +115,7 @@ export default function AdminTablesPage() {
         display_order: table.display_order,
       });
       await refresh();
+      markAdminDataUpdated();
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to update table");
     }
@@ -197,6 +203,7 @@ export default function AdminTablesPage() {
     try {
       await reorderAdminTables(reorderedIds);
       await refresh();
+      markAdminDataUpdated();
       setFeedback("Table order updated.");
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to reorder tables");
@@ -217,11 +224,13 @@ export default function AdminTablesPage() {
             <button type="button" onClick={() => navigate("/admin")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-orange-300 hover:text-orange-600">Back to Dashboard</button>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[0.95fr_0.75fr]">
+          <div>
             <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">Tables</h2>
-                <p className="text-sm text-slate-600">Drag to reorder. Each table gets a numbered label and QR token.</p>
+                <div className="flex items-center gap-3">
+                  <div><h2 className="text-xl font-black">Tables</h2><p className="mt-1 text-sm text-slate-600">Drag to reorder. Each table gets a numbered label and QR token.</p></div>
+                  <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen(true); }} className="min-h-11 rounded-full bg-[var(--maroon-800)] px-5 py-2 text-sm font-bold text-white">Add table</button>
+                </div>
               </div>
               {feedback ? <p className="mt-4 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-700">{feedback}</p> : null}
               {loading ? (
@@ -246,7 +255,7 @@ export default function AdminTablesPage() {
                         <button type="button" onClick={() => startEdit(table)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-orange-300 hover:text-orange-600">Edit</button>
                         <button type="button" onClick={() => handleGenerateQr(table)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-orange-300 hover:text-orange-600">Generate QR</button>
                         <button type="button" onClick={() => toggleActive(table)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-orange-300 hover:text-orange-600">{table.is_active ? "Disable" : "Activate"}</button>
-                        <button type="button" onClick={async () => { if (window.confirm("Delete this table?")) { await deleteAdminTable(table.id); await refresh(); setFeedback("Table deleted."); } }} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-rose-300 hover:text-rose-600">Delete</button>
+                        <button type="button" onClick={async () => { if (window.confirm("Delete this table?")) { await deleteAdminTable(table.id); await refresh(); markAdminDataUpdated(); setFeedback("Table deleted."); } }} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-rose-300 hover:text-rose-600">Delete</button>
                       </div>
                     </div>
                   ))}
@@ -254,10 +263,11 @@ export default function AdminTablesPage() {
               )}
             </section>
 
-            <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
+            {formOpen ? <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--maroon-950)]/70 px-4 py-6 backdrop-blur-sm sm:py-10" role="dialog" aria-modal="true" aria-labelledby="table-form-title">
+            <section className="mx-auto max-w-xl rounded-[2rem] border border-[var(--line)] bg-[var(--cream)] p-6 shadow-[var(--shadow-lifted)] sm:p-8">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">{editingId ? "Edit Table" : "Add Table"}</h2>
-                {editingId ? <button type="button" onClick={resetForm} className="text-sm font-semibold text-slate-600">Cancel</button> : null}
+                <h2 id="table-form-title" className="text-xl font-black text-[var(--maroon-900)]">{editingId ? "Edit Table" : "Add Table"}</h2>
+                <button type="button" onClick={resetForm} aria-label="Close table form" className="grid h-11 w-11 place-items-center rounded-full border border-[var(--line)] bg-white text-xl">×</button>
               </div>
 
               <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -294,11 +304,15 @@ export default function AdminTablesPage() {
                     </div>
                   </div>
                 </div>
-                <button type="submit" disabled={saving} className="w-full rounded-full bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={resetForm} className="min-h-12 rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold">Cancel</button>
+                <button type="submit" disabled={saving} className="min-h-12 rounded-full bg-[var(--maroon-800)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--maroon-700)] disabled:opacity-60">
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Save"}
                 </button>
+                </div>
               </form>
             </section>
+            </div> : null}
           </div>
         </div>
       </main>

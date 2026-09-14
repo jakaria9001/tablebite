@@ -5,7 +5,7 @@ export function StickyMobileCartBar() {
   const { items, itemCount, subtotal } = useCart();
   const location = useLocation();
 
-  if (items.length === 0 || location.pathname === "/cart") {
+  if (items.length === 0 || location.pathname === "/cart" || location.pathname.startsWith("/admin")) {
     return null;
   }
 

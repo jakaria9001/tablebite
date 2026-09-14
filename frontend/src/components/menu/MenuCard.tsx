@@ -19,6 +19,16 @@ export function MenuCard({ item }: Props) {
   const cartEntry = items.find((entry) => entry.menuItemId === item.id && entry.variant === selectedVariant);
   const quantity = cartEntry?.quantity ?? 0;
 
+  function rememberItem() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("tablebite-recent-items") ?? "[]") as number[];
+      const recent = [item.id, ...stored.filter((id) => id !== item.id)].slice(0, 8);
+      window.localStorage.setItem("tablebite-recent-items", JSON.stringify(recent));
+    } catch {
+      // Local storage can be unavailable in private browsing or embedded webviews.
+    }
+  }
+
   const badges = [
     item.is_bestseller ? { label: "★ Bestseller", tone: "accent" as const } : null,
     item.is_featured ? { label: "⭐ Chef's Pick", tone: "success" as const } : null,
@@ -27,21 +37,21 @@ export function MenuCard({ item }: Props) {
   ].filter((badge): badge is { label: string; tone: "default" | "accent" | "success" } => badge !== null);
 
   return (
-    <article className={`overflow-hidden rounded-3xl border border-black/5 bg-white shadow-sm ${!item.is_available ? "opacity-70" : ""}`}>
+    <article onClick={rememberItem} className={`group overflow-hidden rounded-3xl border border-[var(--line)] bg-white shadow-[var(--shadow-soft)] transition duration-200 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)] ${!item.is_available ? "opacity-70" : ""}`}>
       <div className="relative overflow-hidden">
         {item.image_url ? (
           <FallbackImage
             src={item.image_url}
             alt={item.name}
             loading="lazy"
-            className={`aspect-[4/3] w-full object-cover ${!item.is_available ? "grayscale" : ""}`}
+            className={`aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105 ${!item.is_available ? "grayscale" : ""}`}
           />
         ) : (
           <FallbackImage
             src="/indian_restaurant_logo.jpg"
             alt={item.name}
             loading="lazy"
-            className={`aspect-[4/3] w-full object-cover ${!item.is_available ? "grayscale" : ""}`}
+            className={`aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105 ${!item.is_available ? "grayscale" : ""}`}
           />
         )}
         {badges.length > 0 ? (
@@ -62,7 +72,7 @@ export function MenuCard({ item }: Props) {
           <h3 className="font-extrabold leading-tight">{item.name}</h3>
           <VegIndicator isVeg={item.is_veg} />
         </div>
-        <p className="min-h-12 text-sm leading-5 text-slate-600">{item.description}</p>
+        <p className="min-h-12 text-sm leading-5 text-[var(--muted)]">{item.description}</p>
         <div className="mt-4 flex flex-col gap-3">
           {variants.length > 1 ? (
             <div className="flex flex-wrap gap-2">
@@ -103,7 +113,7 @@ export function MenuCard({ item }: Props) {
                 <button
                   type="button"
                   onClick={() => addItem(item, selectedVariant)}
-                  className="rounded-full bg-orange-600 px-4 py-2 text-sm font-bold text-white"
+                  className="min-h-11 rounded-full bg-[var(--maroon-800)] px-5 py-2 text-sm font-bold text-white transition hover:bg-[var(--maroon-700)] active:scale-95"
                 >
                   Add
                 </button>

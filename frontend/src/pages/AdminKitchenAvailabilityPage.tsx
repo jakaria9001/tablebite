@@ -4,11 +4,12 @@ import { updateAdminMenuItem } from "../api/adminMenu";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { useAdminMenu } from "../hooks/useAdminMenu";
+import { markAdminDataUpdated } from "../hooks/useAdminDashboardSummary";
 import type { AdminMenuItem } from "../types/adminMenu";
 
 export default function AdminKitchenAvailabilityPage() {
   const navigate = useNavigate();
-  const { data, loading, error, refresh } = useAdminMenu();
+  const { data, loading, error, updateItem } = useAdminMenu();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -48,7 +49,7 @@ export default function AdminKitchenAvailabilityPage() {
     setFeedback(null);
 
     try {
-      await updateAdminMenuItem(item.id, {
+      const updatedItem = await updateAdminMenuItem(item.id, {
         id: item.id,
         name: item.name,
         description: item.description,
@@ -64,7 +65,8 @@ export default function AdminKitchenAvailabilityPage() {
         sort_order: item.sort_order,
         image_url: item.image_url ?? "",
       });
-      await refresh();
+      updateItem(updatedItem);
+      markAdminDataUpdated();
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Unable to update availability");
     } finally {
@@ -149,9 +151,14 @@ export default function AdminKitchenAvailabilityPage() {
                       type="button"
                       onClick={() => toggleAvailability(item)}
                       disabled={busyId === item.id}
-                      className={`rounded-full px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] transition ${item.is_available ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-rose-600 text-white hover:bg-rose-700"} disabled:opacity-70`}
+                      aria-pressed={item.is_available}
+                      aria-label={`${item.name}: ${item.is_available ? "available" : "sold out"}. Tap to mark as ${item.is_available ? "sold out" : "available"}.`}
+                      className={`flex min-h-12 min-w-[166px] items-center justify-between gap-3 rounded-full px-3 py-2 text-sm font-bold transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 ${item.is_available ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-rose-600 text-white hover:bg-rose-700"}`}
                     >
-                      {busyId === item.id ? "Updating..." : item.is_available ? "Available" : "Sold Out"}
+                      <span>{busyId === item.id ? "Updating..." : item.is_available ? "Available" : "Sold Out"}</span>
+                      <span className={`relative h-8 w-14 shrink-0 rounded-full p-1 transition ${item.is_available ? "bg-emerald-900/35" : "bg-rose-900/35"}`} aria-hidden="true">
+                        <span className={`block h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${item.is_available ? "translate-x-6" : "translate-x-0"}`} />
+                      </span>
                     </button>
                   </div>
                 ))}

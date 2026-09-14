@@ -27,9 +27,9 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10 text-white">
-      <form onSubmit={onSubmit} className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/10 p-8 shadow-2xl backdrop-blur">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-orange-300">Admin access</p>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--maroon-950)] px-4 py-10 text-white">
+      <form onSubmit={onSubmit} className="w-full max-w-md rounded-[2rem] border border-[var(--gold-500)]/25 bg-[var(--maroon-900)] p-8 shadow-[var(--shadow-lifted)]">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--gold-200)]">Admin access</p>
         <h1 className="mt-3 text-3xl font-black">Secure sign in</h1>
         <p className="mt-3 text-sm text-slate-300">Use your administrator credentials to continue.</p>
 
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
         <input
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2"
+          className="mt-2 w-full rounded-2xl border border-white/15 bg-black/20 px-4 py-3 outline-none ring-[var(--gold-500)] focus:ring-2"
           placeholder="admin@example.com"
           type="email"
           autoComplete="username"
@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none ring-orange-400 focus:ring-2"
+          className="mt-2 w-full rounded-2xl border border-white/15 bg-black/20 px-4 py-3 outline-none ring-[var(--gold-500)] focus:ring-2"
           placeholder="••••••••"
           autoComplete="current-password"
           autoCapitalize="none"
@@ -61,7 +61,7 @@ export default function AdminLoginPage() {
 
         {error ? <p className="mt-4 rounded-2xl bg-red-500/15 px-3 py-2 text-sm text-red-200">{error}</p> : null}
 
-        <button disabled={!canSubmit || loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-60">
+        <button disabled={!canSubmit || loading} className="mt-6 min-h-12 w-full rounded-2xl bg-[var(--gold-500)] px-4 py-3 font-black text-[var(--maroon-950)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
