@@ -59,6 +59,18 @@ export function Footer() {
             {phone ? <li>{phone}</li> : null}
             {email ? <li>{email}</li> : null}
           </ul>
+          <div className="mt-8">
+            <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-white">Developed By</h3>
+            <ul className="mt-4 space-y-3 text-sm text-slate-400">
+              <li>Jakaria Hussain</li>
+              <li>
+                Contact: <a href="tel:+917002457828" className="transition hover:text-orange-400">+91 7002457828</a>
+              </li>
+              <li>
+                LinkedIn: <a href="https://www.linkedin.com/in/hussain-9001" target="_blank" rel="noreferrer" className="transition hover:text-orange-400">Profile</a>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
