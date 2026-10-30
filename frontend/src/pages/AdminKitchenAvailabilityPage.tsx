@@ -38,7 +38,8 @@ export default function AdminKitchenAvailabilityPage() {
   }, [filteredItems, page]);
 
   useEffect(() => {
-    setPage(1);
+    const timer = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timer);
   }, [query, statusFilter]);
 
   const availableCount = items.filter((item) => item.is_available).length;

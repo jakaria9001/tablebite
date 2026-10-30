@@ -5,7 +5,7 @@ import { Header } from "../components/layout/Header";
 import { MenuCard } from "../components/menu/MenuCard";
 import { useMenu } from "../hooks/useMenu";
 import { SeoHead } from "../components/seo/SeoHead";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../hooks/useCart";
 
 export default function MenuPage() {
   const { data, loading, error, retry } = useMenu();
@@ -16,22 +16,19 @@ export default function MenuPage() {
   const [nonVegOnly, setNonVegOnly] = useState(false);
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [priceFilter, setPriceFilter] = useState("all");
-  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
-  const [recentIds, setRecentIds] = useState<number[]>([]);
-  const [loadingMessage, setLoadingMessage] = useState("Warming the kitchen");
-  const { itemCount, subtotal } = useCart();
-
-  useEffect(() => {
+  const [recentIds] = useState<number[]>(() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem("tablebite-recent-items") ?? "[]") as unknown;
-      if (Array.isArray(stored)) setRecentIds(stored.filter((id): id is number => typeof id === "number"));
+      return Array.isArray(stored) ? stored.filter((id): id is number => typeof id === "number") : [];
     } catch {
-      setRecentIds([]);
+      return [];
     }
-  }, []);
+  });
+  const [loadingMessage, setLoadingMessage] = useState("Warming the kitchen");
+  const { itemCount, subtotal } = useCart();
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -90,7 +87,6 @@ export default function MenuPage() {
   useEffect(() => {
     const slug = location.hash.replace(/^#/, "");
     if (!slug) {
-      setCategoryId(null);
       return;
     }
 
@@ -99,9 +95,12 @@ export default function MenuPage() {
       return;
     }
 
-    const matchedCategory = data?.categories.find((category) => category.slug === slug);
-    setCategoryId(matchedCategory?.id ?? null);
   }, [data?.categories, location.hash, navigate]);
+
+  const categoryId = useMemo(() => {
+    const slug = location.hash.replace(/^#/, "");
+    return data?.categories.find((category) => category.slug === slug)?.id ?? null;
+  }, [data?.categories, location.hash]);
 
   const items = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -175,12 +174,10 @@ export default function MenuPage() {
           </div>
           <div className="mt-2.5 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
             <button type="button" onClick={() => {
-              setCategoryId(null);
-              window.history.replaceState(null, "", "/menu");
+              navigate("/menu", { replace: true });
             }} className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm font-bold transition active:scale-[0.98] ${categoryId === null ? "bg-[var(--maroon-950)] text-white" : "bg-white text-[var(--ink)] shadow-sm"}`}>All</button>
             {data?.categories.map((category) => <button type="button" key={category.id} onClick={() => {
-              setCategoryId(category.id);
-              window.history.replaceState(null, "", `/menu#${category.slug}`);
+              navigate(`/menu#${category.slug}`, { replace: true });
             }} className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm font-bold transition active:scale-[0.98] ${categoryId === category.id ? "bg-[var(--maroon-950)] text-white" : "bg-white text-[var(--ink)] shadow-sm"}`}>{category.name}</button>)}
           </div>
         </div>

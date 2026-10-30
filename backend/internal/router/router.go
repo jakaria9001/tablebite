@@ -12,7 +12,7 @@ import (
 	"github.com/jakaria9001/tablebite/internal/session"
 )
 
-func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, sessionStore session.Store, corsOrigin string) http.Handler {
+func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, sessionStore session.Store, customerSessionStore appmw.CustomerSessionStore, corsOrigin string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -36,12 +36,14 @@ func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authH
 		api.Get("/reviews", menuHandler.PublicReviews)
 		api.Post("/auth/login", authHandler.Login)
 		api.Post("/auth/logout", authHandler.Logout)
+		api.Post("/auth/otp/request", authHandler.RequestOTP)
+		api.Post("/auth/otp/verify", authHandler.VerifyOTP)
 		api.Get("/auth/csrf", authHandler.CSRFToken)
+		api.With(appmw.WithCustomerOrAdmin(customerSessionStore, sessionStore)).Get("/auth/me", authHandler.Me)
 
 		api.Group(func(admin chi.Router) {
 			admin.Use(appmw.WithAdminUser(sessionStore))
 			admin.Use(appmw.RequireRole("admin"))
-			admin.Get("/auth/me", authHandler.Me)
 			admin.Post("/auth/change-password", authHandler.ChangePassword)
 			admin.Get("/admin/menu", menuHandler.AdminMenu)
 			admin.Post("/admin/menu", menuHandler.CreateMenuItem)

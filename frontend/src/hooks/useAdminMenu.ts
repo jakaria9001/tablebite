@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAdminMenuData } from "../api/adminMenu";
 import type { AdminMenuData } from "../types/adminMenu";
 
@@ -7,7 +7,7 @@ export function useAdminMenu() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     setLoading(true);
     getAdminMenuData()
       .then(setData)
@@ -15,7 +15,7 @@ export function useAdminMenu() {
         setError(cause instanceof Error ? cause.message : "Unable to load menu data");
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   const updateItem = (updatedItem: AdminMenuData["items"][number]) => {
     setData((current) => current ? {
@@ -25,8 +25,9 @@ export function useAdminMenu() {
   };
 
   useEffect(() => {
-    refresh();
-  }, []);
+    const timer = window.setTimeout(() => refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
 
   return { data, loading, error, refresh, updateItem };
 }

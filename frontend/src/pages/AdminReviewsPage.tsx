@@ -40,7 +40,8 @@ export default function AdminReviewsPage() {
   };
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const resetForm = () => {

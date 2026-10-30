@@ -31,13 +31,7 @@ export default function HomePage() {
 
     if (starters.length <= 4) return starters;
 
-    const shuffled = [...starters];
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1));
-      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-    }
-
-    return shuffled.slice(0, 4);
+    return [...starters].sort((left, right) => left.id - right.id).slice(0, 4);
   }, [data]);
   const topDishes = useMemo(() => data?.items.filter((item) => item.is_available).slice(0, 8) ?? [], [data]);
 

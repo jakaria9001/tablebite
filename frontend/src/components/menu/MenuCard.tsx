@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FallbackImage } from "../common/FallbackImage";
-import { useCart } from "../../context/CartContext";
+import { useCart } from "../../hooks/useCart";
 import { getAvailableCartVariants, getCartVariantLabel, type CartVariant } from "../../types/cart";
 import type { MenuItem } from "../../types/menu";
 import { MenuBadge } from "./MenuBadge";

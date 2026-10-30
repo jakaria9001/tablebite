@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useCart } from "../../context/CartContext";
+import { useCart } from "../../hooks/useCart";
 
 export function StickyMobileCartBar() {
   const { items, itemCount, subtotal } = useCart();

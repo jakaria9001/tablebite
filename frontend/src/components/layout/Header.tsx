@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAdminMe, logoutAdmin } from "../../api/auth";
-import { useCart } from "../../context/CartContext";
+import { useCart } from "../../hooks/useCart";
 import { useRestaurantSettings } from "../../hooks/useRestaurantSettings";
 import { FallbackImage } from "../common/FallbackImage";
 

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	SessionExpiry = 24 * time.Hour
+	SessionExpiry  = 24 * time.Hour
 	PasswordMinLen = 12
 )
 
@@ -64,6 +65,11 @@ func GenerateSessionToken() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func HashSessionToken(token string) []byte {
+	sum := sha256.Sum256([]byte(token))
+	return sum[:]
 }
 
 func ConstantTimeEqual(a, b string) bool {

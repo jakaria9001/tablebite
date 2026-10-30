@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { StickyMobileCartBar } from "./components/cart/StickyMobileCartBar";
-import { CartProvider, useCart } from "./context/CartContext";
+import { CartProvider } from "./context/CartContext";
+import { useCart } from "./hooks/useCart";
 import { getAdminTables } from "./api/tables";
 import CartPage from "./pages/CartPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";

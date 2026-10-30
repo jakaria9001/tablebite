@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { CartPanel } from "../components/cart/CartPanel";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../hooks/useCart";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 

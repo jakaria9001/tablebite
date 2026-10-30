@@ -13,8 +13,10 @@ import (
 
 	"github.com/jakaria9001/tablebite/internal/database"
 	"github.com/jakaria9001/tablebite/internal/handler"
+	"github.com/jakaria9001/tablebite/internal/notification"
 	"github.com/jakaria9001/tablebite/internal/repository"
 	"github.com/jakaria9001/tablebite/internal/router"
+	"github.com/jakaria9001/tablebite/internal/service"
 	"github.com/jakaria9001/tablebite/internal/session"
 )
 
@@ -35,8 +37,33 @@ func main() {
 	menuHandler := handler.NewMenuHandler(menuRepo)
 	adminRepo := repository.NewAdminRepository(db)
 	sessionStore := session.NewPostgresStore(db)
-	authHandler := handler.NewAuthHandler(adminRepo, sessionStore)
-	mux := router.New(handler.Health, menuHandler, authHandler, sessionStore, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
+	customerSessionStore := repository.NewCustomerSessionStore(db)
+	var otpRequester handler.OTPRequester
+	var otpLimiter handler.OTPRequestLimiter
+	otpConfig, otpConfigErr := service.LoadOTPConfig()
+	if otpConfigErr != nil {
+		slog.Warn("customer OTP unavailable", "error", otpConfigErr)
+	} else {
+		otpProvider, providerErr := notification.NewOTPProvider(otpConfig.Provider, getenv("APP_ENV", "development"))
+		rateLimitConfig, rateLimitErr := repository.LoadOTPRequestRateLimitConfig()
+		if providerErr != nil {
+			slog.Warn("customer OTP unavailable", "error", providerErr)
+		} else if rateLimitErr != nil {
+			slog.Warn("customer OTP rate limiting unavailable", "error", rateLimitErr)
+		} else {
+			otpStore := repository.NewOTPStore(db)
+			otpService, serviceErr := service.NewOTPService(otpStore, otpProvider, otpConfig)
+			if serviceErr != nil {
+				slog.Warn("customer OTP unavailable", "error", serviceErr)
+			} else {
+				otpRequester = otpService
+				otpLimiter = repository.NewOTPRequestRateLimiter(db, rateLimitConfig)
+			}
+		}
+	}
+	authHandler := handler.NewAuthHandlerWithOTP(adminRepo, sessionStore, otpRequester, otpLimiter)
+	authHandler.SetCustomerSessionStore(customerSessionStore)
+	mux := router.New(handler.Health, menuHandler, authHandler, sessionStore, customerSessionStore, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
 
 	port := getenv("PORT", "8080")
 	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

@@ -9,21 +9,71 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+export type ApiFetchOptions = RequestInit & {
+  includeAdminAuth?: boolean;
+};
+
+let csrfTokenPromise: Promise<string> | null = null;
+
+async function fetchCsrfToken(baseUrl: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/csrf`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    throw new ApiError("server", "Unable to initialize request security.", response.status);
+  }
+
+  try {
+    const payload = JSON.parse(body) as { token?: string };
+    return payload.token ?? "";
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError("server", "Unable to initialize request security.");
+  }
+}
+
+function getCsrfToken(baseUrl: string): Promise<string> {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetchCsrfToken(baseUrl).catch((error) => {
+      csrfTokenPromise = null;
+      throw error;
+    });
+  }
+  return csrfTokenPromise;
+}
+
+export async function apiFetch<T>(path: string, options?: ApiFetchOptions): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
   const token = getStoredAdminToken();
+  const { includeAdminAuth = true, ...requestOptions } = options ?? {};
+  const headers = new Headers(requestOptions.headers);
+  headers.set("Content-Type", "application/json");
+  if (includeAdminAuth && token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const method = (requestOptions.method ?? "GET").toUpperCase();
   let response: Response;
   try {
+    if (!["GET", "HEAD", "OPTIONS"].includes(method) && !headers.has("X-CSRF-Token")) {
+      const csrfToken = await getCsrfToken(baseUrl);
+      if (csrfToken) {
+        headers.set("X-CSRF-Token", csrfToken);
+      }
+    }
     response = await fetch(`${baseUrl}${path}`, {
-      ...options,
+      ...requestOptions,
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
+      headers,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     throw new ApiError("offline", navigator.onLine ? "Unable to reach the server." : "You appear to be offline.");
   }
 
@@ -50,7 +100,6 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   try {
     return JSON.parse(body) as T;
   } catch {
-    // A non-JSON 200 body usually means the request never reached the API (e.g. a routing misconfiguration).
     throw new ApiError("server", "Received an unexpected response from the server.");
   }
 }

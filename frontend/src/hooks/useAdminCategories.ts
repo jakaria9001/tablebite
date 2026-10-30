@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAdminCategories } from "../api/adminCategories";
 import type { AdminCategory } from "../types/adminCategories";
 
@@ -7,7 +7,7 @@ export function useAdminCategories() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     setLoading(true);
     getAdminCategories()
       .then((data) => setCategories(data.categories))
@@ -15,11 +15,12 @@ export function useAdminCategories() {
         setError(cause instanceof Error ? cause.message : "Unable to load categories");
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
-    refresh();
-  }, []);
+    const timer = window.setTimeout(() => refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
 
   return { categories, loading, error, refresh };
 }

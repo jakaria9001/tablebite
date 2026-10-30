@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getMenu } from "../api/menu";
 import type { MenuResponse } from "../types/menu";
 
@@ -44,10 +44,15 @@ function fetchMenu() {
 }
 
 export function useMenu() {
-  const cached = readMenuCache();
+  const [cached] = useState<MenuCache | null>(() => readMenuCache());
   const [data, setData] = useState<MenuResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(cached === null);
   const [error, setError] = useState<string | null>(null);
+  const dataRef = useRef(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const [attempt, setAttempt] = useState(0);
 
@@ -56,24 +61,28 @@ export function useMenu() {
       return;
     }
 
-    setLoading(!data);
-    setError(null);
-    fetchMenu()
-      .then((freshData) => {
-        setData(freshData);
-        try {
-          window.localStorage.setItem(MENU_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: freshData } satisfies MenuCache));
-        } catch {
-          // Continue using the in-memory response when storage is unavailable.
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!data) {
-          setError(cause instanceof Error ? cause.message : "Unable to load menu");
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [attempt]);
+    const timer = window.setTimeout(() => {
+      setLoading(!dataRef.current);
+      setError(null);
+      fetchMenu()
+        .then((freshData) => {
+          setData(freshData);
+          try {
+            window.localStorage.setItem(MENU_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: freshData } satisfies MenuCache));
+          } catch {
+            // Continue using the in-memory response when storage is unavailable.
+          }
+        })
+        .catch((cause: unknown) => {
+          if (!dataRef.current) {
+            setError(cause instanceof Error ? cause.message : "Unable to load menu");
+          }
+        })
+        .finally(() => setLoading(false));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [attempt, cached]);
 
   return { data, loading, error, retry: () => setAttempt((value) => value + 1) };
 }

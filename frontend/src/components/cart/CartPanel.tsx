@@ -1,27 +1,39 @@
 import { useEffect, useState } from "react";
 import { FallbackImage } from "../common/FallbackImage";
-import { useCart } from "../../context/CartContext";
+import { useCart } from "../../hooks/useCart";
 import { useRestaurantSettings } from "../../hooks/useRestaurantSettings";
 import { getCartVariantLabel } from "../../types/cart";
+import { useAuth } from "../../hooks/useAuth";
+import { CustomerVerificationModal } from "../auth/CustomerVerificationModal";
 
 export function CartPanel() {
   const { items, itemCount, subtotal, activeTable, updateQuantity, removeItem, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const { settings } = useRestaurantSettings();
   const restaurantName = settings.restaurant_name?.trim() || "Restaurant";
-  const [showNotice, setShowNotice] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showCartSummary, setShowCartSummary] = useState(false);
 
   useEffect(() => {
-    if (!showNotice) {
+    if (!showConfirmation) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      setShowNotice(false);
+      setShowConfirmation(false);
     }, 10000);
 
     return () => window.clearTimeout(timer);
-  }, [showNotice]);
+  }, [showConfirmation]);
+
+  function handleOrderClick() {
+    if (isAuthenticated) {
+      setShowConfirmation(true);
+      return;
+    }
+    setShowVerification(true);
+  }
 
   return (
     <section id="cart" className="mb-8 rounded-[28px] border border-black/5 bg-white p-5 shadow-sm">
@@ -88,10 +100,10 @@ export function CartPanel() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowNotice(true)}
+                onClick={handleOrderClick}
                 className="w-full rounded-full bg-orange-600 px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-white transition hover:bg-orange-500"
               >
-                Order
+                Continue
               </button>
             </div>
           </div>
@@ -141,24 +153,30 @@ export function CartPanel() {
         </div>
       ) : null}
 
-      {showNotice ? (
+      {showVerification ? (
+        <CustomerVerificationModal
+          onClose={() => setShowVerification(false)}
+          onVerified={() => setShowConfirmation(true)}
+        />
+      ) : null}
+
+      {showConfirmation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
           <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white p-6 text-center shadow-2xl">
-            <p className="text-lg font-black uppercase tracking-[0.2em] text-orange-600">Coming Soon</p>
+            <p className="text-lg font-black uppercase tracking-[0.2em] text-orange-600">Mobile verified</p>
             <div className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
-              <p>Online ordering support is coming soon.</p>
-              <p>Please call a waiter and show them</p>
-              <p>your cart. Thanks!</p>
+                <p>Your mobile number has been verified.</p>
+                <p>Online ordering will be enabled shortly.</p>
                 <p className="mt-3 font-semibold text-slate-800">
-                Your cart: {itemCount} item{itemCount > 1 ? "s" : ""} · ₹{subtotal}
-              </p>
+                  Your cart: {itemCount} item{itemCount > 1 ? "s" : ""} · ₹{subtotal}
+                </p>
             </div>
             <button
               type="button"
-              onClick={() => setShowNotice(false)}
+              onClick={() => setShowConfirmation(false)}
               className="mt-6 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white"
             >
-              Continue Browsing
+              Continue browsing
             </button>
           </div>
         </div>

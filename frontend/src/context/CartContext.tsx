@@ -1,30 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { MenuItem } from "../types/menu";
 import { getAvailableCartVariants, getCartVariantPrice, type CartItem, type CartVariant } from "../types/cart";
-
-interface ActiveTableInfo {
-  id: number | null;
-  tableNumber: string;
-  tableName: string;
-  qrToken: string;
-}
-
-interface CartContextValue {
-  items: CartItem[];
-  itemCount: number;
-  subtotal: number;
-  activeTable: ActiveTableInfo | null;
-  addItem: (item: MenuItem, variant?: CartVariant) => void;
-  updateQuantity: (menuItemId: number, variant: CartVariant, quantity: number) => void;
-  removeItem: (menuItemId: number, variant: CartVariant) => void;
-  clearCart: () => void;
-  setTableInfo: (table: ActiveTableInfo | null) => void;
-}
+import { CartContext, type ActiveTableInfo, type CartContextValue } from "./cart-context";
 
 const STORAGE_KEY = "tablebite-cart";
 const TABLE_STORAGE_KEY = "tablebite-active-table";
-
-const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 function readStoredCart(): CartItem[] {
   if (typeof window === "undefined") {
@@ -167,13 +147,4 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }), [items, itemCount, subtotal, activeTable]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-}
-
-export function useCart() {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
-
-  return context;
 }
