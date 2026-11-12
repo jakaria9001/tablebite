@@ -38,6 +38,9 @@ func main() {
 	adminRepo := repository.NewAdminRepository(db)
 	sessionStore := session.NewPostgresStore(db)
 	customerSessionStore := repository.NewCustomerSessionStore(db)
+	tableSessionStore := repository.NewTableSessionStore(db)
+	orderStore := repository.NewOrderStore(db)
+	waiterStore := repository.NewWaiterSessionStore(db)
 	var otpRequester handler.OTPRequester
 	var otpLimiter handler.OTPRequestLimiter
 	otpConfig, otpConfigErr := service.LoadOTPConfig()
@@ -63,7 +66,15 @@ func main() {
 	}
 	authHandler := handler.NewAuthHandlerWithOTP(adminRepo, sessionStore, otpRequester, otpLimiter)
 	authHandler.SetCustomerSessionStore(customerSessionStore)
-	mux := router.New(handler.Health, menuHandler, authHandler, sessionStore, customerSessionStore, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
+	tableSessionHandler := handler.NewTableSessionHandler(tableSessionStore)
+	orderHandler := handler.NewOrderHandler(orderStore)
+	orderDetailsHandler := handler.NewOrderDetailsHandler(orderStore)
+	var otpVerifier handler.OTPVerifier
+	if candidate, ok := otpRequester.(handler.OTPVerifier); ok {
+		otpVerifier = candidate
+	}
+	waiterHandler := handler.NewWaiterHandler(waiterStore, otpRequester, otpVerifier)
+	mux := router.New(handler.Health, menuHandler, authHandler, tableSessionHandler, orderHandler, orderDetailsHandler, waiterHandler, waiterStore, sessionStore, customerSessionStore, getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"))
 
 	port := getenv("PORT", "8080")
 	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

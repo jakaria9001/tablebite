@@ -88,3 +88,27 @@ export async function logout(): Promise<void> {
     includeAdminAuth: false,
   });
 }
+
+export async function requestWaiterOtp(phone: string): Promise<void> {
+  await apiFetch<void>("/api/v1/auth/waiter/otp/request", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+    includeAdminAuth: false,
+  });
+}
+
+export async function verifyWaiterOtp(phone: string, otp: string) {
+  const result = await apiFetch<{ waiter: { id: number; customerId: number; name: string; phone: string } }>("/api/v1/auth/waiter/otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ phone, otp }),
+    includeAdminAuth: false,
+  });
+  return result.waiter;
+}
+
+export async function logoutWaiter(): Promise<void> {
+  await apiFetch<void>("/api/v1/auth/waiter/logout", {
+    method: "POST",
+    includeAdminAuth: false,
+  });
+}

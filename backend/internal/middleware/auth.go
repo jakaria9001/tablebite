@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/jakaria9001/tablebite/internal/repository"
 	"github.com/jakaria9001/tablebite/internal/session"
 )
 
@@ -55,10 +57,21 @@ func bearerToken(r *http.Request) string {
 }
 
 func RequireRole(required string) func(http.Handler) http.Handler {
+	return RequireRoles(required)
+}
+
+func RequireRoles(required ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, ok := FromContext(r.Context())
-			if !ok || user.Role != required && user.Role != "super_admin" {
+			allowed := user.Role == "super_admin"
+			for _, role := range required {
+				if user.Role == role {
+					allowed = true
+					break
+				}
+			}
+			if !ok || !allowed {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -70,4 +83,80 @@ func RequireRole(required string) func(http.Handler) http.Handler {
 func FromContext(ctx context.Context) (AdminUser, bool) {
 	user, ok := ctx.Value(userContextKey).(AdminUser)
 	return user, ok
+}
+
+type WaiterUser = repository.Waiter
+
+type WaiterSessionStore interface {
+	Lookup(ctx context.Context, tokenHash []byte) (repository.Waiter, bool, error)
+	Revoke(ctx context.Context, tokenHash []byte) error
+}
+
+const waiterSessionCookie = "tablebite_waiter_session"
+
+func WithWaiterUser(store WaiterSessionStore) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie(waiterSessionCookie)
+			if err != nil || cookie.Value == "" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			hash := sha256.Sum256([]byte(cookie.Value))
+			waiter, valid, err := store.Lookup(r.Context(), hash[:])
+			if err != nil {
+				http.Error(w, "authentication service unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			if !valid {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), waiterContextKey, waiter)))
+		})
+	}
+}
+
+type waiterContextKeyType string
+
+const waiterContextKey waiterContextKeyType = "waiter_user"
+
+func WaiterFromContext(ctx context.Context) (repository.Waiter, bool) {
+	waiter, ok := ctx.Value(waiterContextKey).(repository.Waiter)
+	return waiter, ok
+}
+
+func WithStaffUser(waiterStore WaiterSessionStore, adminStore session.Store) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if token := adminTokenFromRequest(r); token != "" {
+				admin, valid, err := adminStore.Lookup(r.Context(), token)
+				if err != nil {
+					http.Error(w, "authentication service unavailable", http.StatusServiceUnavailable)
+					return
+				}
+				if valid && admin.Active && !admin.Expires.Before(time.Now()) &&
+					(admin.Role == "admin" || admin.Role == "manager" || admin.Role == "super_admin") {
+					next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey, admin)))
+					return
+				}
+			}
+			cookie, err := r.Cookie(waiterSessionCookie)
+			if err != nil || cookie.Value == "" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			hash := sha256.Sum256([]byte(cookie.Value))
+			waiter, valid, err := waiterStore.Lookup(r.Context(), hash[:])
+			if err != nil {
+				http.Error(w, "authentication service unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			if !valid {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), waiterContextKey, waiter)))
+		})
+	}
 }

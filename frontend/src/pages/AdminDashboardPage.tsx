@@ -2,10 +2,31 @@ import { useNavigate } from "react-router-dom";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { useAdminDashboardSummary } from "../hooks/useAdminDashboardSummary";
+import { provisionWaiter } from "../api/staffOrders";
+import { useState } from "react";
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const { data, loading, error } = useAdminDashboardSummary();
+  const [waiterPhone, setWaiterPhone] = useState("");
+  const [waiterName, setWaiterName] = useState("");
+  const [waiterMessage, setWaiterMessage] = useState("");
+  const [provisioning, setProvisioning] = useState(false);
+
+  async function addWaiter() {
+    setProvisioning(true);
+    setWaiterMessage("");
+    try {
+      await provisionWaiter(waiterPhone, waiterName);
+      setWaiterMessage("Waiter access enabled. They can now sign in with phone OTP.");
+      setWaiterPhone("");
+      setWaiterName("");
+    } catch (cause) {
+      setWaiterMessage(cause instanceof Error ? cause.message : "Unable to add waiter.");
+    } finally {
+      setProvisioning(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#fffaf5] text-slate-900">
@@ -105,6 +126,17 @@ export default function AdminDashboardPage() {
                   {action}
                 </button>
               ))}
+            </div>
+            <div className="mt-8 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+              <h2 className="text-xl font-black">Add waiter access</h2>
+              <p className="mt-2 text-sm text-slate-600">The customer must have completed OTP verification first.</p>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <input value={waiterName} onChange={(event) => setWaiterName(event.target.value)} placeholder="Waiter name" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-orange-300" />
+                <input value={waiterPhone} onChange={(event) => setWaiterPhone(event.target.value)} placeholder="9876543210" inputMode="tel" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-orange-300" />
+                <button type="button" disabled={provisioning || !waiterName.trim() || !waiterPhone.trim()} onClick={() => void addWaiter()} className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white disabled:opacity-50">{provisioning ? "Adding..." : "Add waiter"}</button>
+              </div>
+              {waiterMessage ? <p className="mt-3 text-sm font-semibold text-slate-700">{waiterMessage}</p> : null}
+              <button type="button" onClick={() => navigate("/waiter/login")} className="mt-4 text-sm font-bold text-orange-700">Open waiter login</button>
             </div>
           </div>
         </div>

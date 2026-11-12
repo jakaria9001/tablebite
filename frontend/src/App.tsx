@@ -3,7 +3,7 @@ import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { StickyMobileCartBar } from "./components/cart/StickyMobileCartBar";
 import { CartProvider } from "./context/CartContext";
 import { useCart } from "./hooks/useCart";
-import { getAdminTables } from "./api/tables";
+import { resolveTableSession } from "./api/tableSessions";
 import CartPage from "./pages/CartPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -18,48 +18,47 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import HomePage from "./pages/HomePage";
 import MenuPage from "./pages/MenuPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import OrderReviewPage from "./pages/OrderReviewPage";
+import OrderDetailsPage from "./pages/OrderDetailsPage";
+import WaiterLoginPage from "./pages/WaiterLoginPage";
+import WaiterDashboardPage from "./pages/WaiterDashboardPage";
 import { AdminRoute } from "./components/common/AdminRoute";
 import { NetworkStatus } from "./components/common/NetworkStatus";
 
 function TableRouteMenuPage() {
-  const { tableNumber, token } = useParams();
+  const { token } = useParams();
   const { setTableInfo } = useCart();
 
   useEffect(() => {
-    if (!tableNumber && !token) {
+    if (!token) {
+      setTableInfo(null);
       return;
     }
 
     let cancelled = false;
 
-    void getAdminTables().then((tables) => {
+    void resolveTableSession(token).then((session) => {
       if (cancelled) {
         return;
       }
 
-      const match = tables.find((table) => table.table_number === tableNumber || table.qr_token === token);
-      if (match) {
-        setTableInfo({
-          id: match.id,
-          tableNumber: match.table_number,
-          tableName: match.display_name || `Table ${match.table_number}`,
-          qrToken: match.qr_token,
-        });
-        return;
-      }
-
       setTableInfo({
-        id: null,
-        tableNumber: tableNumber ?? "",
-        tableName: tableNumber ? `Table ${tableNumber}` : "Table",
-        qrToken: token ?? "",
+        id: session.tableId,
+        sessionId: session.id,
+        tableNumber: session.tableNumber,
+        tableName: session.tableName || `Table ${session.tableNumber}`,
+        qrToken: session.qrToken,
       });
+    }).catch(() => {
+      if (!cancelled) {
+        setTableInfo(null);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [setTableInfo, tableNumber, token]);
+  }, [setTableInfo, token]);
 
   return <MenuPage />;
 }
@@ -83,6 +82,10 @@ export default function App() {
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/table/:tableNumber/:token" element={<TableRouteMenuPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/order/review" element={<OrderReviewPage />} />
+        <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
+        <Route path="/waiter/login" element={<WaiterLoginPage />} />
+        <Route path="/waiter" element={<WaiterDashboardPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
         <Route path="/admin/menu" element={<AdminRoute><AdminMenuPage /></AdminRoute>} />

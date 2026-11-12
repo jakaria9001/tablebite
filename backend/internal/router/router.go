@@ -12,7 +12,7 @@ import (
 	"github.com/jakaria9001/tablebite/internal/session"
 )
 
-func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, sessionStore session.Store, customerSessionStore appmw.CustomerSessionStore, corsOrigin string) http.Handler {
+func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authHandler *handler.AuthHandler, tableSessionHandler *handler.TableSessionHandler, orderHandler *handler.OrderHandler, orderDetailsHandler *handler.OrderDetailsHandler, waiterHandler *handler.WaiterHandler, waiterStore appmw.WaiterSessionStore, sessionStore session.Store, customerSessionStore appmw.CustomerSessionStore, corsOrigin string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -34,12 +34,33 @@ func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authH
 		api.Get("/gallery", menuHandler.PublicGallery)
 		api.Get("/banners", menuHandler.PublicBanners)
 		api.Get("/reviews", menuHandler.PublicReviews)
+		api.Get("/tables/resolve/{tableToken}", tableSessionHandler.Resolve)
+		api.Get("/tables/session/{sessionId}", tableSessionHandler.Get)
 		api.Post("/auth/login", authHandler.Login)
 		api.Post("/auth/logout", authHandler.Logout)
 		api.Post("/auth/otp/request", authHandler.RequestOTP)
 		api.Post("/auth/otp/verify", authHandler.VerifyOTP)
+		api.Post("/auth/waiter/otp/request", waiterHandler.RequestOTP)
+		api.Post("/auth/waiter/otp/verify", waiterHandler.VerifyOTP)
+		api.Post("/auth/waiter/logout", waiterHandler.Logout)
 		api.Get("/auth/csrf", authHandler.CSRFToken)
 		api.With(appmw.WithCustomerOrAdmin(customerSessionStore, sessionStore)).Get("/auth/me", authHandler.Me)
+		api.With(appmw.WithCustomerUser(customerSessionStore)).Post("/orders", orderHandler.Create)
+		api.With(appmw.WithCustomerUser(customerSessionStore)).Get("/orders/{orderId}", orderDetailsHandler.Get)
+
+		api.Group(func(staff chi.Router) {
+			staff.Use(appmw.WithStaffUser(waiterStore, sessionStore))
+			staff.Get("/staff/orders", waiterHandler.Orders)
+			staff.Get("/staff/orders/{id}", waiterHandler.Order)
+			staff.Post("/staff/orders/{id}/status", waiterHandler.Transition)
+		})
+
+		api.Group(func(staff chi.Router) {
+			staff.Use(appmw.WithAdminUser(sessionStore))
+			staff.Use(appmw.RequireRoles("admin", "manager"))
+			staff.Post("/admin/tables/{id}/sessions/open", tableSessionHandler.Open)
+			staff.Post("/admin/tables/{id}/sessions/close", tableSessionHandler.Close)
+		})
 
 		api.Group(func(admin chi.Router) {
 			admin.Use(appmw.WithAdminUser(sessionStore))
@@ -76,6 +97,7 @@ func New(healthHandler http.HandlerFunc, menuHandler *handler.MenuHandler, authH
 			admin.Put("/admin/tables/{id}", menuHandler.UpdateTable)
 			admin.Delete("/admin/tables/{id}", menuHandler.DeleteTable)
 			admin.Post("/admin/tables/reorder", menuHandler.ReorderTables)
+			admin.Post("/admin/waiters", waiterHandler.Provision)
 		})
 
 	})

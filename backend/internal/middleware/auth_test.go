@@ -56,6 +56,19 @@ func TestRequireRoleAllowsAdminAndRejectsOtherRoles(t *testing.T) {
 	}
 }
 
+func TestRequireRolesAllowsTableSessionStaff(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	req := httptest.NewRequest(http.MethodPost, "/admin/tables/7/sessions/open", nil)
+	req = req.WithContext(contextWithUser(req.Context(), AdminUser{Role: "manager", Active: true}))
+	res := httptest.NewRecorder()
+
+	RequireRoles("admin", "manager")(next).ServeHTTP(res, req)
+
+	if res.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusNoContent)
+	}
+}
+
 func contextWithUser(ctx context.Context, user AdminUser) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FallbackImage } from "../common/FallbackImage";
 import { useCart } from "../../hooks/useCart";
 import { useRestaurantSettings } from "../../hooks/useRestaurantSettings";
@@ -10,26 +11,20 @@ export function CartPanel() {
   const { items, itemCount, subtotal, activeTable, updateQuantity, removeItem, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const { settings } = useRestaurantSettings();
+  const navigate = useNavigate();
   const restaurantName = settings.restaurant_name?.trim() || "Restaurant";
   const [showVerification, setShowVerification] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showCartSummary, setShowCartSummary] = useState(false);
-
-  useEffect(() => {
-    if (!showConfirmation) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setShowConfirmation(false);
-    }, 10000);
-
-    return () => window.clearTimeout(timer);
-  }, [showConfirmation]);
+  const [showWaiterView, setShowWaiterView] = useState(false);
+  const [showTableRequired, setShowTableRequired] = useState(false);
 
   function handleOrderClick() {
+    if (!activeTable?.sessionId) {
+      setShowTableRequired(true);
+      return;
+    }
     if (isAuthenticated) {
-      setShowConfirmation(true);
+      navigate("/order/review");
       return;
     }
     setShowVerification(true);
@@ -103,8 +98,17 @@ export function CartPanel() {
                 onClick={handleOrderClick}
                 className="w-full rounded-full bg-orange-600 px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-white transition hover:bg-orange-500"
               >
-                Continue
+                Continue to order
               </button>
+              {!activeTable?.sessionId ? (
+                <button
+                  type="button"
+                  onClick={() => setShowWaiterView(true)}
+                  className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-white transition hover:bg-white/20"
+                >
+                  Show to waiter
+                </button>
+              ) : null}
             </div>
           </div>
         </>
@@ -156,28 +160,63 @@ export function CartPanel() {
       {showVerification ? (
         <CustomerVerificationModal
           onClose={() => setShowVerification(false)}
-          onVerified={() => setShowConfirmation(true)}
+          onVerified={() => {
+            setShowVerification(false);
+            navigate("/order/review");
+          }}
         />
       ) : null}
 
-      {showConfirmation ? (
+      {showWaiterView ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
           <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white p-6 text-center shadow-2xl">
-            <p className="text-lg font-black uppercase tracking-[0.2em] text-orange-600">Mobile verified</p>
-            <div className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
-                <p>Your mobile number has been verified.</p>
-                <p>Online ordering will be enabled shortly.</p>
-                <p className="mt-3 font-semibold text-slate-800">
-                  Your cart: {itemCount} item{itemCount > 1 ? "s" : ""} · ₹{subtotal}
-                </p>
+            <p className="text-lg font-black uppercase tracking-[0.2em] text-orange-600">Show to waiter</p>
+            <div className="mt-4 space-y-3 text-left text-sm text-slate-600">
+              {items.map((item) => (
+                <div key={`waiter-${item.menuItemId}-${item.variant}`} className="flex items-center justify-between gap-3">
+                  <span>{item.name} · {getCartVariantLabel(item.variant)} ×{item.quantity}</span>
+                  <span className="font-bold text-slate-900">₹{item.unitPrice * item.quantity}</span>
+                </div>
+              ))}
+              <p className="border-t border-slate-200 pt-3 font-black text-slate-900">Subtotal · ₹{subtotal}</p>
             </div>
             <button
               type="button"
-              onClick={() => setShowConfirmation(false)}
+              onClick={() => setShowWaiterView(false)}
               className="mt-6 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white"
             >
-              Continue browsing
+              Close
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showTableRequired ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
+          <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white p-6 text-center shadow-2xl">
+            <p className="text-lg font-black uppercase tracking-[0.2em] text-orange-600">Scan your table QR</p>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              To place an online order, scan the QR code at your table first. Your order will then be linked to the correct table session.
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTableRequired(false)}
+                className="w-full rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTableRequired(false);
+                  setShowWaiterView(true);
+                }}
+                className="w-full rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
+              >
+                Show cart to waiter
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

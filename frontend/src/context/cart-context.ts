@@ -4,6 +4,7 @@ import type { CartItem, CartVariant } from "../types/cart";
 
 export interface ActiveTableInfo {
   id: number | null;
+  sessionId: number | null;
   tableNumber: string;
   tableName: string;
   qrToken: string;

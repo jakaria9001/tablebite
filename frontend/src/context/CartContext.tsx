@@ -44,7 +44,9 @@ function readStoredTableInfo(): ActiveTableInfo | null {
     }
 
     const parsed = JSON.parse(stored) as ActiveTableInfo;
-    return parsed && typeof parsed.tableNumber === "string" ? parsed : null;
+    return parsed && typeof parsed.tableNumber === "string"
+      ? { ...parsed, sessionId: typeof parsed.sessionId === "number" ? parsed.sessionId : null }
+      : null;
   } catch {
     return null;
   }
